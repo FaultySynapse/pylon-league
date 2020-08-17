@@ -12,6 +12,7 @@ from sc2 import run_game, maps, Race, Difficulty
 from sc2.player import Bot, Computer
 from sc2.constants import *
 from sc2.ids.unit_typeid import UnitTypeId
+from sc2.ids.upgrade_id import UpgradeId
 from sc2.ids.ability_id import AbilityId
 from sc2.position import Point2
 from typing import Tuple, List
@@ -33,7 +34,7 @@ class BrianBot(sc2.BotAI):
 
     async def build_workers(self):
         for cc in self.townhalls.ready:
-            if self.can_afford(SCV):
+            if self.can_afford(SCV) and self.units(UnitTypeId.SCV).amount < self.structures(UnitTypeId.COMMANDCENTER).amount*22:
                 self.do(cc.train(UnitTypeId.SCV))
 
 
@@ -41,7 +42,6 @@ class BrianBot(sc2.BotAI):
 
         cc = self.townhalls.random
         if self.can_afford(UnitTypeId.SUPPLYDEPOT) and self.supply_left < 10 and self.already_pending(UnitTypeId.SUPPLYDEPOT) < 1:
-            print("Let's build a supply depot")
             await self.build(UnitTypeId.SUPPLYDEPOT, near=cc.position.towards(self.game_info.map_center, 8))
 
 
@@ -59,7 +59,7 @@ class BrianBot(sc2.BotAI):
 
     async def expand(self):
         if (
-            1 <= self.townhalls.amount < 3
+            1 <= self.townhalls.amount < 5
             and self.already_pending(UnitTypeId.COMMANDCENTER) == 0
             and self.can_afford(UnitTypeId.COMMANDCENTER)
         ):
@@ -85,7 +85,6 @@ class BrianBot(sc2.BotAI):
 
     async def offensive_force_buildings(self):
         sd = self.structures(UnitTypeId.SUPPLYDEPOT)
-        print(sd)
         if self.can_afford(UnitTypeId.BARRACKS) and not self.already_pending(UnitTypeId.BARRACKS) and sd:
             await self.build(UnitTypeId.BARRACKS, near=sd.random.position)
         for racks in self.structures(UnitTypeId.BARRACKS).ready.idle:
@@ -110,14 +109,29 @@ class BrianBot(sc2.BotAI):
                 self.do(racks.train(UnitTypeId.MARINE))
 
     async def handle_upgrades(self):
-        self.build_upgrade_buildings()
-        self.do_upgrades()
+        await self.build_upgrade_buildings()
+        await self.do_upgrades()
 
-    def build_upgrade_buildings(self):
-        pass
+    async def build_upgrade_buildings(self):
+        cc = self.townhalls.random
+        print(cc)
+        eb = self.structures(UnitTypeId.ENGINEERINGBAY )
+        if (self.can_afford(UnitTypeId.ENGINEERINGBAY)
+            and not self.already_pending(UnitTypeId.ENGINEERINGBAY)
+            and cc
+            and len(eb) < 2
+        ):
+            print("Build Engineering pay")
+            await self.build(UnitTypeId.ENGINEERINGBAY, near=cc.position)
 
-    def do_upgrades(self):
-        pass
+    async def do_upgrades(self):
+        for eb in self.structures(UnitTypeId.ENGINEERINGBAY):
+            if self.can_afford(UpgradeId.TERRANINFANTRYWEAPONSLEVEL1) and (self.already_pending_upgrade(TERRANINFANTRYWEAPONSLEVEL1) == 0):
+                eb.research(UpgradeId.TERRANINFANTRYWEAPONSLEVEL1)
+                return
+            elif self.can_afford(UpgradeId.TERRANINFANTRYARMORSLEVEL1) and (self.already_pending_upgrade(TERRANINFANTRYARMORSLEVEL1) == 0):
+                eb.research(UpgradeId.TERRANINFANTRYARMORSLEVEL1)
+                return
 
     def find_target(self):
         if len(self.enemy_units) > 0:
