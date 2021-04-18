@@ -1,5 +1,5 @@
 import sc2
-from brians_excellant_agent import BrianBot
+from brians_excellent_agent import BrianBot
 from sc2.player import Bot, Computer
 
 
